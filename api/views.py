@@ -1,8 +1,9 @@
 from rest_framework.decorators import api_view
 from rest_framework import status
 from rest_framework.response import Response
+from api.models import Restaurants
 
-from api.serializers import RestaurantSerializer
+from api.serializers import GetRestaurantSerializer, RestaurantSerializer
 
  
 @api_view(['POST'])
@@ -23,3 +24,17 @@ def register_restaurant(request):
     else:
         return Response(restaurant_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET'])
+def get_restaurant(request,id_restaurant):
+    '''Obtiene todas las plantas registradas'''
+    restaurant_exists = Restaurants.objects.filter(id=id_restaurant).exists()
+    if restaurant_exists:
+        restaurant = Restaurants.objects.filter(id=id_restaurant)
+        restaurant_serializer = GetRestaurantSerializer(restaurant, many=True)
+        return Response({
+            "Restaurant": restaurant_serializer.data
+        }, status=status.HTTP_200_OK)
+    else:
+        return Response(status=status.HTTP_404_NOT_FOUND)
+
+          
