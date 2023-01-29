@@ -1,52 +1,48 @@
+import re
 from rest_framework import serializers
 
 from api.models import Restaurants
 
-
+from uuid import UUID
 
 class RestaurantSerializer(serializers.ModelSerializer):
     class Meta: 
         model = Restaurants
         fields = ('id', 'rating', 'name', 'site', 'email', 'phone', 'street', 'city', 'state', 'lat', 'lng')
+        extra_kwargs = {'id': {'required': False}}
+    
+    def validate_id(self, value):
+        try:
+            UUID(value, version=4)
+        except ValueError:
+            raise serializers.ValidationError("The id value must be a v4 UUID.")
+        return value
 
-    # def create(self, validated_data):
-    #     restaurant = Restaurants.objects.create(
-    #         id = validated_data['id'],
-    #         rating = validated_data['rating'],
-    #         name = validated_data['name'],
-    #         site = validated_data['site'],
-    #         email = validated_data['email'],
-    #         phone = validated_data['phone'],
-    #         street = validated_data['street'],
-    #         city = validated_data['city'],
-    #         state = validated_data['state'],
-    #         lat = validated_data['lat'],
-    #         lng = validated_data['lng'],   
-    #     )
-    #     return restaurant
-    def create(self,validated_data):
+    def validate_rating(self, value):
+        if value < 1 or value > 4:
+            raise serializers.ValidationError("The rating value must be between 1 and 4.")
+        return value
+
+    def validate_email(self, value):
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+            raise serializers.ValidationError("The email value must be a valid email address.")
+        return value    
+    
+    def create(self, validated_data):
+        existing_record = Restaurants.objects.filter(
+            name=validated_data['name'],
+            site=validated_data['site'],
+            email=validated_data['email'],
+            phone=validated_data['phone'],
+            street=validated_data['street'],
+            city=validated_data['city'],
+            state=validated_data['state'],
+            lat=validated_data['lat'],
+            lng=validated_data['lng'],
+        ).first()
+        if existing_record:
+            raise serializers.ValidationError("A record with the same data already exists.")
         return Restaurants.objects.create(**validated_data)
-
-    # def update(self, instance, validated_data):
-    #     instance.rating = validated_data.get('rating', instance.rating)
-    #     instance.name = validated_data.get('name', instance.name)
-    #     instance.site = validated_data.get('site', instance.site)
-    #     instance.email = validated_data.get('email', instance.email)
-    #     instance.phone = validated_data.get('phone', instance.phone)
-    #     instance.street = validated_data.get('street', instance.street)
-    #     instance.city = validated_data.get('city', instance.city)
-    #     instance.state = validated_data.get('state', instance.state)
-    #     instance.lat = validated_data.get('lat', instance.lat)
-    #     instance.lng = validated_data.get('lng', instance.lng)
-    #     instance.save()
-    #     return instance    
-    
-    
-class GetRestaurantSerializer(serializers.ModelSerializer):
- 
-    class Meta:
-        model = Restaurants
-        fields = ('id', 'rating', 'name', 'site', 'email', 'phone', 'street', 'city', 'state', 'lat', 'lng')
 
     def get_restaurants(self, Restaurants):
         return {
@@ -62,35 +58,35 @@ class GetRestaurantSerializer(serializers.ModelSerializer):
             "restaurant_lat": Restaurants.lat, 
             "restaurant_lng": Restaurants.lng,
         }
-
-# class UpdateRestaurantSerializer(serializers.ModelSerializer):
-    
-#     class Meta: 
-#         model = Restaurants
-#         fields = ('id', 'rating', 'name', 'site', 'email', 'phone', 'street', 'city', 'state', 'lat', 'lng')
-#         extra_kwargs = {'id': {'required': False}}
-
-#     def update(self, instance, validated_data):
-#         instance.rating = validated_data.get('rating', instance.rating)
-#         instance.name = validated_data.get('name', instance.name)
-#         instance.site = validated_data.get('site', instance.site)
-#         instance.email = validated_data.get('email', instance.email)
-#         instance.phone = validated_data.get('phone', instance.phone)
-#         instance.street = validated_data.get('street', instance.street)
-#         instance.city = validated_data.get('city', instance.city)
-#         instance.state = validated_data.get('state', instance.state)
-#         instance.lat = validated_data.get('lat', instance.lat)
-#         instance.lng = validated_data.get('lng', instance.lng)
-#         instance.save()
-#         return instance
-
-class UpdateRestaurantSerializer(serializers.ModelSerializer):
-    class Meta: 
-        model = Restaurants
-        fields = ('id', 'rating', 'name', 'site', 'email', 'phone', 'street', 'city', 'state', 'lat', 'lng')
-        extra_kwargs = {'id': {'required': False}}   
+    def update(self, instance, validated_data):
+            restaurant = instance
+            if restaurant:
+                restaurant.rating = validated_data.get('rating', restaurant.rating)
+                restaurant.name = validated_data.get('name', restaurant.name)
+                restaurant.site = validated_data.get('site', restaurant.site)
+                restaurant.email = validated_data.get('email', restaurant.email)
+                restaurant.phone = validated_data.get('phone', restaurant.phone)
+                restaurant.street = validated_data.get('street', restaurant.street)
+                restaurant.city = validated_data.get('city', restaurant.city)
+                restaurant.state = validated_data.get('state', restaurant.state)
+                restaurant.lat = validated_data.get('lat', restaurant.lat)
+                restaurant.lng = validated_data.get('lng', restaurant.lng)
+                restaurant.save()
+                return restaurant
+            else:
+                raise serializers.ValidationError("No restaurant was found with the specified id.")
 
 class DeleteRestaurantSerializer(serializers.Serializer):
     id = serializers.CharField()
+    
+    def delete(self):
+        restaurant = Restaurants.objects.filter(id=self.validated_data['id']).first()
+        if restaurant:
+            restaurant.delete()
+        else:
+            raise serializers.ValidationError("No restaurant was found with the specified id.")
+
+
+        
 
     
